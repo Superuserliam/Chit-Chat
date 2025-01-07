@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chit Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #5593cc;
+        }
+
+        header {
+            background-color: #ffa500;
+            color: white;
+            text-align: center;
+            padding: 1em 0;
+        }
+
+        main {
+            padding: 2em;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        form input, form textarea, form button {
+            padding: 10px;
+            font-size: 1em;
+        }
+
+        form textarea {
+            resize: none;
+        }
+
+        form button {
+            background-color: #ffa500;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        form button:hover {
+            background-color: #e59400;
+        }
+
+        #chat-wall {
+            margin-top: 2em;
+            max-width: 600px;
+            margin: 2em auto;
+        }
+
+        #messages {
+            list-style: none;
+            padding: 0;
+        }
+
+        #messages li {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        #messages li .username {
+            font-weight: bold;
+            margin-bottom: 0.5em;
+        }
+
+        #messages li .message-text {
+            margin: 0;
+        }
+
+        #messages li .timestamp {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 0.8em;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>chit chat</h1>
+    </header>
+    <main>
+        <form id="chat-form">
+            <input type="text" id="username" placeholder="Enter your username" required>
+            <textarea id="message" maxlength="75" placeholder="Write your message or whatever here (max 1860 characters)" required></textarea>
+            <button type="submit">Send Message</button>
+        </form>
+        <section id="chat-wall">
+            <h2>Chat :)</h2>
+            <ul id="messages"></ul>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+         const firebaseConfig = {
+  apiKey: "AIzaSyBWh8j81PWc4kHZVk8R31gDIwN_6KKliZ4",
+  authDomain: "chit-chat-924d5.firebaseapp.com",
+  projectId: "chit-chat-924d5",
+  storageBucket: "chit-chat-924d5.firebasestorage.app",
+  messagingSenderId: "161336381353",
+  appId: "1:161336381353:web:0c8cfb58b5115188937eb8",
+  measurementId: "G-2D2YMGL6LK"
+};
+        
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("chat-form");
+            const messagesList = document.getElementById("messages");
+
+            const bannedWords = ["peepeepoopoo"];
+
+            form.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const username = document.getElementById("username").value.trim();
+                const message = document.getElementById("message").value.trim();
+                const timestamp = new Date().toISOString();
+
+                
+
+                if (message.length > 1860) {
+                    alert("too long, know one will read this you know?");
+                    return;
+                }
+
+                if (bannedWords.some((word) => message.toLowerCase().includes(word))) {
+                    alert("thats a naughty word, you cant say that, no no no.");
+                    return;
+                }
+
+                if (username && message) {
+                    push(ref(db, "group_chat"), { username, message, timestamp, reports: 0 });
+                    form.reset();
+                }
+            });
+
+            const messagesRef = ref(db, "group_chat");
+            onValue(messagesRef, (snapshot) => {
+                const messages = [];
+                snapshot.forEach((childSnapshot) => {
+                    messages.push({ id: childSnapshot.key, ...childSnapshot.val() });
+                });
+
+                messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                messagesList.innerHTML = "";
+                messages.forEach(({ id, username, message, timestamp, reports }) => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <div class="username">${username}</div>
+                        <div class="message-text">${message}</div>
+                        <div class="timestamp">${new Date(timestamp).toLocaleString()}</div>
+                        
+                    
+                        const messageRef = ref(db, `group_chat/${id}`);
+                        update(messageRef, { reports: (reports || 0) + 1 });
+                        if ((reports || 0) + 1 >= 5) {
+                            remove(messageRef);
+                        }
+                    });
+
+                    messagesList.appendChild(li);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
